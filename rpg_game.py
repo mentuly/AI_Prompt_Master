@@ -16,13 +16,12 @@ class RPGPromptMaster:
             "Ліс": False,
             "Поселення": False,
             "Гори": False,
-            "Печера": False,
-            "Вежа Майстра": False,
-            "Річка": False,
-            "Замок": False,
             "Ферма": False,
+            "Печера": False,
             "Руїни": False,
-            "Порт": False
+            "Порт": False,
+            "Замок": False,
+            "Вежа Майстра": False,
         }
         self.allowed_locations = ["Ліс"]
         self.start_game()
@@ -106,7 +105,7 @@ class RPGPromptMaster:
 """)
 
     def intro_teacher(self):
-        print("\n👨‍🏫 Вчитель: Вітаю, шукачу знань! Світ Промптів сповнений випробувань.\n")
+        print("\nВчитель: Вітаю, шукачу знань! Світ Промптів сповнений випробувань.\n")
         print("Щоб стати Легендою Промптів, ти маєш подорожувати цим світом, зустрічати наставників і перемагати НПС!")
         print("Ось мапа твоїх пригод. Почни з Лісу. Збирай досвід і відкривай нові місця!\n")
 
@@ -114,8 +113,8 @@ class RPGPromptMaster:
         print("""
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ║      Ліс — Поселення — Гори               Ферма —     Руїни           ║
-║       |             |                          |         |            ║
-║     Річка      Печера                         Порт       Замок        ║
+║                     |                          |         |            ║
+║                Печера                         Порт       Замок        ║
 ║                       |                                     |         ║
 ║                    Вежа Майстра                            ???        ║
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -127,7 +126,7 @@ class RPGPromptMaster:
         print(f"\n🔹 Ваш XP: {self.xp} | Ранг: {self.rank}")
 
     def enter_location(self, location):
-        print(f"🏞️ Ви входите в '{location}'...")
+        print(f"Ви входите в '{location}'...")
         npc_lookup = {
             "Ліс": ("Промпт-Початківець", 15),
             "Поселення": ("Промпт-Майстер", 30),
@@ -171,11 +170,9 @@ class RPGPromptMaster:
         if prompt.strip().lower() == "idk":
             print("🔓 Чит-режим активовано. Ви автоматично виграли бій!")
             user_score = 10
-            feedback = "(Чит-код активований — перемога без оцінки.)"
+            feedback = "(Чит-код активований — перемога)"
         else:
             user_score, feedback = self.evaluate_prompt(prompt)
-
-        # оцінка вже зроблена вище, повтор не потрібен
 
         if npc_xp <= 50:
             npc_score = 1
@@ -201,10 +198,10 @@ class RPGPromptMaster:
                 self.allowed_locations.append("Поселення")
             if self.xp >= 45 and "Гори" not in self.allowed_locations:
                 self.allowed_locations.append("Гори")
-            if self.xp >= 90 and "Печера" not in self.allowed_locations:
-                self.allowed_locations.append("Печера")
-            if self.xp >= 150 and "Ферма" not in self.allowed_locations:
+            if self.xp >= 90 and "Ферма" not in self.allowed_locations:
                 self.allowed_locations.append("Ферма")
+            if self.xp >= 150 and "Печера" not in self.allowed_locations:
+                self.allowed_locations.append("Печера")
             if self.xp >= 240 and "Руїни" not in self.allowed_locations:
                 self.allowed_locations.append("Руїни")
             if self.xp >= 360 and "Порт" not in self.allowed_locations:
@@ -214,7 +211,7 @@ class RPGPromptMaster:
             if self.xp >= 780 and "Вежа Майстра" not in self.allowed_locations:
                 self.allowed_locations.append("Вежа Майстра")
         else:
-            print("😞 Ви програли. Але зможете спробувати ще раз пізніше!")
+            print("Ви програли. Але зможете спробувати ще раз пізніше!")
             print(f"💡 Порада: {feedback}")
 
     def update_rank(self):
@@ -234,8 +231,8 @@ class RPGPromptMaster:
 ║                                                                    ║
 ║     🏆 Вітаємо! Ви стали Легендою Промптів! 🏆                     ║
 ║                                                                    ║
-║  Ви перемогли всіх NPC, пройшли усі пригоди й стали майстром!     ║
-║   Тепер ваші промпти — еталон для цілих поколінь шукачів знань.   ║
+║  Ви перемогли всіх NPC, пройшли усі пригоди й стали майстром!      ║
+║   Тепер ваші промпти — еталон для цілих поколінь шукачів знань.    ║
 ║                                                                    ║
 ╚════════════════════════════════════════════════════════════════════╝
 """)

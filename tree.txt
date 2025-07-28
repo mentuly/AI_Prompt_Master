@@ -1,0 +1,8 @@
+AI_PROMPT_MASTER
+|
+├── .gitignore
+├── main.py
+├── prompt_tasks.py
+├── README.md
+├── rpg_game.py
+└── tree.txt

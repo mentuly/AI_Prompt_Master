@@ -1,0 +1,4 @@
+rpg_save.db
+user_data.json
+__pycache__/
+*.py[cod]

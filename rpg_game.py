@@ -1,15 +1,18 @@
-import random
 import sqlite3
 from prompt_tasks import get_random_task
 
 
 class RPGPromptMaster:
     DB_FILE = "rpg_save.db"
+
     def __init__(self):
         self.conn = sqlite3.connect(self.DB_FILE)
         self.cursor = self.conn.cursor()
         self.create_tables()
+        self.add_columns_if_not_exist()
         self.defeated_npcs = set()
+        self.visited = False
+        self.completed = False
         self.xp = 0
         self.rank = "Новачок"
         self.map = {
@@ -25,6 +28,16 @@ class RPGPromptMaster:
         }
         self.allowed_locations = ["Ліс"]
         self.start_game()
+    def add_columns_if_not_exist(self):
+        self.cursor.execute("PRAGMA table_info(player)")
+        columns = [info[1] for info in self.cursor.fetchall()]
+
+        if "visited" not in columns:
+            self.cursor.execute("ALTER TABLE player ADD COLUMN visited INTEGER DEFAULT 0")
+        if "completed" not in columns:
+            self.cursor.execute("ALTER TABLE player ADD COLUMN completed INTEGER DEFAULT 0")
+        self.conn.commit()
+
 
     def create_tables(self):
         self.cursor.execute('''CREATE TABLE IF NOT EXISTS player (
@@ -40,7 +53,10 @@ class RPGPromptMaster:
 
     def save_game(self):
         self.cursor.execute('DELETE FROM player')
-        self.cursor.execute('INSERT INTO player (xp, rank) VALUES (?, ?)', (self.xp, self.rank))
+        self.cursor.execute(
+            'INSERT INTO player (xp, rank, visited, completed) VALUES (?, ?, ?, ?)',
+            (self.xp, self.rank, int(self.visited), int(self.completed))
+        )
         self.cursor.execute('DELETE FROM progress')
         for npc in self.defeated_npcs:
             self.cursor.execute('INSERT INTO progress (npc, defeated) VALUES (?, 1)', (npc,))
@@ -50,10 +66,12 @@ class RPGPromptMaster:
         self.conn.commit()
 
     def load_game(self):
-        self.cursor.execute('SELECT xp, rank FROM player')
+        self.cursor.execute('SELECT xp, rank, visited, completed FROM player')
         row = self.cursor.fetchone()
         if row:
-            self.xp, self.rank = row
+            self.xp, self.rank, visited, completed = row
+            self.visited = bool(visited)
+            self.completed = bool(completed)
         self.cursor.execute('SELECT npc FROM progress')
         self.defeated_npcs = set(npc for (npc,) in self.cursor.fetchall())
         self.cursor.execute('SELECT location FROM unlocked')
@@ -61,8 +79,22 @@ class RPGPromptMaster:
 
     def start_game(self):
         self.load_game()
-        self.show_intro()
-        self.intro_teacher()
+
+        if self.completed:
+            self.show_ending()
+            replay = input("Хочеш пройти гру знову? (так/ні): ").strip().lower()
+            if replay == "так":
+                self.reset_game()
+            else:
+                print("Дякуємо за гру! До нових зустрічей.")
+                return
+
+        if not self.visited:
+            self.show_intro()
+            self.intro_teacher()
+            self.visited = True
+            self.save_game()
+
         while True:
             print("\nОберіть дію:")
             print("1. Переглянути карту")
@@ -71,7 +103,6 @@ class RPGPromptMaster:
             main_choice = input("Ваш вибір: ")
             if main_choice == "1":
                 self.show_map()
-                continue
             elif main_choice == "2":
                 self.show_map()
                 command = input("Куди вирушити? (напиши назву локації або 'вихід'): ")
@@ -90,6 +121,16 @@ class RPGPromptMaster:
                 print("До зустрічі!")
                 self.save_game()
                 break
+
+    def reset_game(self):
+        self.xp = 0
+        self.rank = "Новачок"
+        self.visited = False
+        self.completed = False
+        self.defeated_npcs.clear()
+        self.allowed_locations = ["Ліс"]
+        self.save_game()
+        self.start_game()
 
     def show_intro(self):
         print("""
@@ -124,6 +165,18 @@ class RPGPromptMaster:
             access = "✅" if location in self.allowed_locations else "🔒"
             print(f"{access} {location}")
         print(f"\n🔹 Ваш XP: {self.xp} | Ранг: {self.rank}")
+
+    def show_ending(self):
+        print("""
+╔════════════════════════════════════════════════════════════════════╗
+║                                                                    ║
+║     🏆 Вітаємо! Ви стали Легендою Промптів! 🏆                     ║
+║                                                                    ║
+║  Ви перемогли всіх NPC, пройшли усі пригоди й стали майстром!      ║
+║   Тепер ваші промпти — еталон для цілих поколінь шукачів знань.    ║
+║                                                                    ║
+╚════════════════════════════════════════════════════════════════════╝
+""")
 
     def enter_location(self, location):
         print(f"Ви входите в '{location}'...")
@@ -224,29 +277,27 @@ class RPGPromptMaster:
             self.rank = "Учень Майстра"
         elif self.xp >= 200:
             self.rank = "Учень"
-        if self.rank != prev_rank:
-            if self.rank == "Легенда Промптів":
-                print("""
-╔════════════════════════════════════════════════════════════════════╗
-║                                                                    ║
-║     🏆 Вітаємо! Ви стали Легендою Промптів! 🏆                     ║
-║                                                                    ║
-║  Ви перемогли всіх NPC, пройшли усі пригоди й стали майстром!      ║
-║   Тепер ваші промпти — еталон для цілих поколінь шукачів знань.    ║
-║                                                                    ║
-╚════════════════════════════════════════════════════════════════════╝
-""")
-                while True:
-                    choice = input("🔁 Бажаєте почати гру спочатку? (так/ні): ").strip().lower()
-                    if choice == "так":
-                        self.__init__()
-                        return
-                    elif choice == "ні":
-                        print("👋 Дякуємо за гру в AI Prompt Master RPG!")
-                        self.save_game()
-                        exit()
-                    else:
-                        print("Будь ласка, оберіть 'так' або 'ні'.")
-            print(f"🏅 Ваш ранг оновлено: {self.rank}")
-        else:
-            print(f"🔸 Ви отримали XP. Поточний XP: {self.xp}")
+        if self.rank == "Легенда Промптів":
+            self.completed = True
+            self.save_game()
+            print("""
+            ╔════════════════════════════════════════════════════════════════════╗
+            ║                                                                    ║
+            ║     🏆 Вітаємо! Ви стали Легендою Промптів! 🏆                     ║
+            ║                                                                    ║
+            ║  Ви перемогли всіх NPC, пройшли усі пригоди й стали майстром!      ║
+            ║   Тепер ваші промпти — еталон для цілих поколінь шукачів знань.    ║
+            ║                                                                    ║
+            ╚════════════════════════════════════════════════════════════════════╝
+            """)
+            while True:
+                choice = input("🔁 Бажаєте почати гру спочатку? (так/ні): ").strip().lower()
+                if choice == "так":
+                    self.__init__()
+                    return
+                elif choice == "ні":
+                    print("👋 Дякуємо за гру в AI Prompt Master RPG!")
+                    self.save_game()
+                    exit()
+                else:
+                    print("Будь ласка, оберіть 'так' або 'ні'.")
